@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#1565C0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Crazinos Daily — Kit Sales &amp; Inventory</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-wrap">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="7" width="18" height="13" rx="2.5" stroke="#1565C0" stroke-width="2.2"/>
+            <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#1565C0" stroke-width="2.2"/>
+            <path d="M8 16v-3M12 16v-5M16 16v-7" stroke="#E53935" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div style="min-width:0;">
+          <div class="brand-title" id="headerBusinessName">Crazinos Daily</div>
+          <span class="brand-subtitle" id="headerDateDisplay">Kit Sales &amp; Inventory</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" class="header-btn eod-header-btn" onclick="openEodReportModal()" title="Generate Daily PDF Report">
+          <span>Daily Report</span>
+        </button>
+        <button type="button" class="header-btn" onclick="lockDashboard()" title="Lock Admin Session">
+          <span>Lock</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+
+    <!-- ==========================================
+         1. DASHBOARD VIEW
+         ========================================== -->
+    <section id="view-dashboard" class="view-section active">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Today's Performance</h1>
+          <p class="section-subtitle" id="dashboardDateLabel">Loading today's summary...</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <input type="date" id="dashboardDatePicker" class="form-control" style="min-height:40px; padding:6px 10px; width:auto;" onchange="loadDashboard()" aria-label="Select Dashboard Date" />
+          <button type="button" class="btn btn-sm btn-outline-blue" onclick="resetDashboardToToday()">Today</button>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Total Kits Sold Today</div>
+          <div class="summary-value blue" id="dashKitsSold">0</div>
+          <div class="summary-subtext">Units sold</div>
+        </div>
+
+        <div class="summary-card highlight-red">
+          <div class="summary-label">Total Sales Revenue Today</div>
+          <div class="summary-value red" id="dashRevenue">₹0</div>
+          <div class="summary-subtext" id="dashProfitSubtext">Gross revenue</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-label">Total Orders Today</div>
+          <div class="summary-value" id="dashOrders">0</div>
+          <div class="summary-subtext">Recorded transactions</div>
+        </div>
+
+        <div class="summary-card" id="dashStockCard">
+          <div class="summary-label">Total Kits Remaining</div>
+          <div class="summary-value" id="dashRemainingStock">0</div>
+          <div class="summary-subtext" id="dashStockSubtext">Available in stock</div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions-grid">
+        <button type="button" class="btn btn-red" onclick="switchView('add-sale')">
+          + Add Sale
+        </button>
+        <button type="button" class="btn btn-blue" onclick="openKitModal()">
+          + Add New Kit
+        </button>
+        <button type="button" class="btn btn-outline-blue" onclick="switchView('reports')">
+          View Daily Report
+        </button>
+      </div>
+
+      <div class="card" style="background: var(--primary-blue-soft); border-color: var(--primary-blue); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="min-width:200px; flex:1;">
+          <div style="font-weight:800; color:var(--primary-blue); font-size:1rem;">End-of-Day Executive Report</div>
+          <div style="font-size:0.84rem; color:var(--dark-text);">Generate today's summary and download a formatted PDF report.</div>
+        </div>
+        <button type="button" class="btn btn-red" id="btnGenerateTodayReportMain" onclick="openEodReportModal()">
+          GENERATE TODAY'S REPORT
+        </button>
+      </div>
+
+      <!-- Today's Sales Grouped by Platform -->
+      <div class="card">
+        <div class="card-title">
+          <span>Today's Sales (By Platform)</span>
+          <span class="status-pill active" id="dashPlatformCountPill">0 Platforms</span>
+        </div>
+        <div id="dashboardSalesContainer">
+          <div class="empty-state">
+            <div class="empty-state-title">No sales recorded today yet</div>
+            <p>Tap <strong>+ Add Sale</strong> above to record your first sale.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         2. ADD SALE VIEW (FASTEST ENTRY)
+         ========================================== -->
+    <section id="view-add-sale" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Quick Sale Entry</h1>
+          <p class="section-subtitle">Record a kit sale in seconds</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <form id="addSaleForm" onsubmit="submitAddSale(event)">
+          <!-- 1. Select Kit -->
+          <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px;">
+              <label class="form-label" for="saleKitSearch" style="margin-bottom:0;">1. Select Kit <span class="req">*</span></label>
+              <button type="button" class="btn btn-sm btn-outline-blue" style="min-height:28px; padding:2px 8px; font-size:0.76rem;" onclick="openKitModal()">+ New Kit</button>
+            </div>
+            <input
+              type="text"
+              id="saleKitSearch"
+              class="form-control"
+              placeholder="Search kit by name or SKU..."
+              autocomplete="off"
+              oninput="filterSaleKitOptions()"
+              onfocus="showSaleKitDropdown()"
+              style="margin-bottom:8px;"
+            />
+            <div id="saleKitSearchResults" class="kit-search-results" style="display:none;"></div>
+            <select id="saleKitSelect" class="form-control" required onchange="onSaleKitSelected()">
+              <option value="">-- Choose a Kit --</option>
+            </select>
+            <div class="form-hint" id="selectedKitStockHint"></div>
+          </div>
+
+          <!-- 2. Select Platform -->
+          <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px;">
+              <label class="form-label" for="salePlatformSelect" style="margin-bottom:0;">2. Select Platform <span class="req">*</span></label>
+              <button type="button" class="btn btn-sm btn-outline-blue" style="min-height:28px; padding:2px 8px; font-size:0.76rem;" onclick="promptQuickAddPlatform()">+ Custom Platform</button>
+            </div>
+            <select id="salePlatformSelect" class="form-control" required onchange="syncPlatformQuickChips()">
+              <option value="">-- Choose Selling Platform --</option>
+            </select>
+            <div class="qty-presets" id="platformQuickChips"></div>
+          </div>
+
+          <!-- 3. Quantity Sold & 4. Selling Price -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="saleQuantityInput">3. Quantity Sold <span class="req">*</span></label>
+              <div class="qty-stepper">
+                <button type="button" class="qty-btn" onclick="adjustSaleQty(-1)" aria-label="Decrease quantity">-</button>
+                <input
+                  type="number"
+                  id="saleQuantityInput"
+                  class="form-control"
+                  value="1"
+                  min="1"
+                  step="1"
+                  required
+                  oninput="recalcSaleForm()"
+                  style="text-align:center; font-weight:800; font-size:1.15rem;"
+                />
+                <button type="button" class="qty-btn" onclick="adjustSaleQty(1)" aria-label="Increase quantity">+</button>
+              </div>
+              <div class="qty-presets">
+                <button type="button" class="chip-btn" onclick="setSaleQty(1)">1</button>
+                <button type="button" class="chip-btn" onclick="setSaleQty(2)">2</button>
+                <button type="button" class="chip-btn" onclick="setSaleQty(5)">5</button>
+                <button type="button" class="chip-btn" onclick="setSaleQty(10)">10</button>
+                <button type="button" class="chip-btn" onclick="setSaleQty(25)">25</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="salePriceInput">4. Selling Price (Per Unit) <span class="req">*</span></label>
+              <input
+                type="number"
+                id="salePriceInput"
+                class="form-control"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                required
+                oninput="recalcSaleForm()"
+              />
+              <div class="form-hint">Auto-filled from kit price; editable for this sale.</div>
+            </div>
+          </div>
+
+          <!-- 5. Date and Time -->
+          <div class="form-group">
+            <label class="form-label" for="saleDateTimeInput">5. Sale Date &amp; Time <span class="req">*</span></label>
+            <input
+              type="datetime-local"
+              id="saleDateTimeInput"
+              class="form-control"
+              required
+            />
+          </div>
+
+          <!-- Automatic Calculation Preview -->
+          <div class="calc-preview-box">
+            <div class="calc-row">
+              <span class="calc-total-label">Total Sale Amount (Qty x Price)</span>
+              <span class="calc-total-val" id="calcTotalSaleAmount">₹0</span>
+            </div>
+            <div class="calc-row" id="calcProfitRow">
+              <span style="font-size:0.86rem; color:var(--muted-text); font-weight:600;">Estimated Profit</span>
+              <span style="font-size:0.96rem; font-weight:800; color:var(--primary-blue);" id="calcEstimatedProfit">₹0</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-red btn-block" id="saveSaleSubmitBtn" style="font-size:1.06rem; min-height:54px;">
+            Save Sale
+          </button>
+        </form>
+      </div>
+
+      <!-- Recent Sales Entries -->
+      <div class="card">
+        <div class="card-title">
+          <span>Recent Sales Entries</span>
+          <span style="font-size:0.8rem; color:var(--muted-text);">Edit or delete to correct entries</span>
+        </div>
+        <div id="recentSalesListContainer"></div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         3. KIT MANAGEMENT VIEW
+         ========================================== -->
+    <section id="view-kits" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Kit Management</h1>
+          <p class="section-subtitle">Manage kits, selling prices, stock &amp; sales history</p>
+        </div>
+        <button type="button" class="btn btn-blue" onclick="openKitModal()">
+          + Add New Kit
+        </button>
+      </div>
+
+      <div class="card" style="padding:12px;">
+        <div class="form-row">
+          <input
+            type="text"
+            id="kitFilterSearch"
+            class="form-control"
+            placeholder="Search kits by name, SKU, or category..."
+            oninput="renderKitsGrid()"
+          />
+          <select id="kitFilterStatus" class="form-control" onchange="renderKitsGrid()">
+            <option value="ALL">All Statuses (Active &amp; Inactive)</option>
+            <option value="Active">Active Kits Only</option>
+            <option value="Inactive">Inactive Kits Only</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="kitsGridContainer" class="kits-grid"></div>
+    </section>
+
+    <!-- ==========================================
+         4. REPORTS & ANALYTICS VIEW
+         ========================================== -->
+    <section id="view-reports" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Reports &amp; Analytics</h1>
+          <p class="section-subtitle">Daily, Weekly, Monthly, Annual, History &amp; Period Comparison</p>
+        </div>
+        <button type="button" class="btn btn-red" onclick="openEodReportModal()">
+          GENERATE TODAY'S REPORT
+        </button>
+      </div>
+
+      <!-- Report Category Tabs -->
+      <div class="tabs-bar" role="tablist">
+        <button type="button" class="tab-btn active" data-report-tab="daily" onclick="switchReportTab('daily')">Daily</button>
+        <button type="button" class="tab-btn" data-report-tab="weekly" onclick="switchReportTab('weekly')">Weekly</button>
+        <button type="button" class="tab-btn" data-report-tab="monthly" onclick="switchReportTab('monthly')">Monthly</button>
+        <button type="button" class="tab-btn" data-report-tab="annual" onclick="switchReportTab('annual')">Annual</button>
+        <button type="button" class="tab-btn" data-report-tab="custom" onclick="switchReportTab('custom')">Custom Range</button>
+        <button type="button" class="tab-btn" data-report-tab="history" onclick="switchReportTab('history')">History &amp; Compare</button>
+      </div>
+
+      <!-- Filters Card -->
+      <div class="card" id="reportFiltersCard">
+        <div class="form-row" style="align-items:end;">
+          <div class="form-group" id="filterDailyWrap" style="margin-bottom:0;">
+            <label class="form-label" for="repDailyDate">Select Date</label>
+            <input type="date" id="repDailyDate" class="form-control" onchange="loadActiveReport()" />
+          </div>
+
+          <div class="form-group" id="filterWeeklyWrap" style="display:none; margin-bottom:0;">
+            <label class="form-label" for="repWeeklyStart">Week Starting Date</label>
+            <input type="date" id="repWeeklyStart" class="form-control" onchange="loadActiveReport()" />
+          </div>
+
+          <div class="form-group" id="filterMonthlyWrap" style="display:none; margin-bottom:0;">
+            <label class="form-label" for="repMonthlyInput">Select Month &amp; Year</label>
+            <input type="month" id="repMonthlyInput" class="form-control" onchange="loadActiveReport()" />
+          </div>
+
+          <div class="form-group" id="filterAnnualWrap" style="display:none; margin-bottom:0;">
+            <label class="form-label" for="repAnnualYear">Select Year</label>
+            <select id="repAnnualYear" class="form-control" onchange="loadActiveReport()"></select>
+          </div>
+
+          <div class="form-group" id="filterCustomWrap" style="display:none; margin-bottom:0;">
+            <label class="form-label">Start &amp; End Date</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input type="date" id="repCustomStart" class="form-control" style="flex:1; min-width:130px;" onchange="loadActiveReport()" />
+              <input type="date" id="repCustomEnd" class="form-control" style="flex:1; min-width:130px;" onchange="loadActiveReport()" />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="repFilterKit">Filter by Kit</label>
+            <select id="repFilterKit" class="form-control" onchange="loadActiveReport()">
+              <option value="">All Kits</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="repFilterPlatform">Filter by Platform</label>
+            <select id="repFilterPlatform" class="form-control" onchange="loadActiveReport()">
+              <option value="">All Platforms</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Analytics Content -->
+      <div id="reportMainAnalyticsWrap">
+        <div class="summary-grid" id="reportSummaryGrid"></div>
+
+        <!-- Highlights Row -->
+        <div class="summary-grid" id="reportHighlightsGrid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));"></div>
+
+        <!-- Export Bar -->
+        <div class="card" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+          <div>
+            <strong id="reportPeriodTitleDisplay">Report Summary</strong>
+            <div style="font-size:0.82rem; color:var(--muted-text);">Export formatted executive reports</div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <button type="button" class="btn btn-sm btn-red" onclick="downloadCurrentReport('pdf')">Download PDF</button>
+            <button type="button" class="btn btn-sm btn-blue" onclick="downloadCurrentReport('excel')">Download Excel</button>
+            <button type="button" class="btn btn-sm btn-outline-blue" onclick="downloadCurrentReport('csv')">Download CSV</button>
+            <button type="button" class="btn btn-sm btn-outline-blue" onclick="openCurrentReportTextModal()">View Summary</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="card">
+            <div class="card-title">Platform-Wise Performance</div>
+            <div id="reportPlatformTableWrap" class="table-responsive"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" id="reportKitCardTitle">Kit-Wise Sales Breakdown</div>
+            <div id="reportKitTableWrap" class="table-responsive"></div>
+          </div>
+        </div>
+
+        <div class="card" id="reportTrendCard" style="display:none;">
+          <div class="card-title" id="reportTrendCardTitle">Sales Trend</div>
+          <div id="reportTrendTableWrap" class="table-responsive"></div>
+        </div>
+      </div>
+
+      <!-- Report History & Period Comparison View -->
+      <div id="reportHistoryAndCompareWrap" style="display:none;">
+        <div class="card">
+          <div class="card-title">Compare Two Reporting Periods</div>
+          <div class="form-row">
+            <div style="background:var(--light-bg); padding:12px; border-radius:var(--radius-sm);">
+              <div style="font-weight:700; margin-bottom:8px; color:var(--primary-blue);">Period A (Baseline)</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="date" id="cmpP1Start" class="form-control" style="flex:1; min-width:130px;" />
+                <input type="date" id="cmpP1End" class="form-control" style="flex:1; min-width:130px;" />
+              </div>
+            </div>
+            <div style="background:var(--light-bg); padding:12px; border-radius:var(--radius-sm);">
+              <div style="font-weight:700; margin-bottom:8px; color:var(--primary-red);">Period B (Comparison)</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="date" id="cmpP2Start" class="form-control" style="flex:1; min-width:130px;" />
+                <input type="date" id="cmpP2End" class="form-control" style="flex:1; min-width:130px;" />
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button type="button" class="btn btn-blue" onclick="runPeriodComparison()">Compare Periods</button>
+          </div>
+          <div id="comparisonResultContainer" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Historical Daily Reports</div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px;">
+            <input type="date" id="historyQuickDateInput" class="form-control" style="max-width:220px;" />
+            <button type="button" class="btn btn-red" onclick="openHistoricalDateReport()">Generate Daily Report</button>
+          </div>
+          <div class="card-title" style="font-size:0.92rem;">Dates with Recorded Sales</div>
+          <div id="activeSalesDatesContainer" class="table-responsive"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Generated Report History Log</div>
+          <div id="generatedReportsLogContainer" class="table-responsive"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         5. SETTINGS VIEW
+         ========================================== -->
+    <section id="view-settings" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Settings &amp; Administration</h1>
+          <p class="section-subtitle">Configure business info, platforms, stock/profit tracking &amp; backups</p>
+        </div>
+      </div>
+
+      <!-- Business & Preferences -->
+      <div class="card">
+        <div class="card-title">Business &amp; Preferences</div>
+        <form onsubmit="saveGeneralSettings(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="setBusinessName">Business / Organization Name</label>
+              <input type="text" id="setBusinessName" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="setCurrency">Currency</label>
+              <select id="setCurrency" class="form-control">
+                <option value="INR ₹">INR ₹ (Indian Rupee)</option>
+                <option value="USD $">USD $ (US Dollar)</option>
+                <option value="EUR €">EUR € (Euro)</option>
+                <option value="GBP £">GBP £ (British Pound)</option>
+                <option value="AED د.إ">AED د.إ (UAE Dirham)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="setTimezone">Time Zone</label>
+              <select id="setTimezone" class="form-control">
+                <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">America/New_York (EST/EDT)</option>
+                <option value="Europe/London">Europe/London (GMT/BST)</option>
+                <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Feature Toggles</label>
+              <div style="display:flex; flex-direction:column; gap:10px; padding-top:6px;">
+                <label style="display:flex; align-items:center; gap:10px; font-weight:600; cursor:pointer;">
+                  <input type="checkbox" id="setStockTracking" style="width:20px; height:20px;" />
+                  <span>Enable Stock Tracking</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:10px; font-weight:600; cursor:pointer;">
+                  <input type="checkbox" id="setProfitCalc" style="width:20px; height:20px;" />
+                  <span>Enable Profit Calculations</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:10px; font-weight:600; cursor:pointer;">
+                  <input type="checkbox" id="setRequireAuth" style="width:20px; height:20px;" />
+                  <span>Require Administrator Password on Startup</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-blue">Save Settings</button>
+        </form>
+      </div>
+
+      <!-- Manage Selling Platforms -->
+      <div class="card">
+        <div class="card-title">Manage Selling Platforms</div>
+        <form onsubmit="addCustomPlatformFromSettings(event)" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+          <input
+            type="text"
+            id="newPlatformNameInput"
+            class="form-control"
+            style="flex:1; min-width:200px;"
+            placeholder="Enter new platform name (e.g., Blinkit, Retail Partner)..."
+            required
+          />
+          <button type="submit" class="btn btn-blue" style="flex-shrink:0;">+ Add Platform</button>
+        </form>
+        <div id="settingsPlatformsTableWrap" class="table-responsive"></div>
+      </div>
+
+      <!-- Quick Links to Manage Kits -->
+      <div class="card" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="min-width:200px; flex:1;">
+          <div style="font-weight:700; font-size:1rem;">Manage Kits Inventory &amp; Pricing</div>
+          <div style="font-size:0.85rem; color:var(--muted-text);">Add new kits, update default selling prices, or deactivate old kits.</div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="btn btn-outline-blue" onclick="switchView('kits')">Open Kits Manager</button>
+          <button type="button" class="btn btn-blue" onclick="openKitModal()">+ Add Kit</button>
+        </div>
+      </div>
+
+      <!-- Export All Data & Backup / Restore -->
+      <div class="card">
+        <div class="card-title">Export All Data, Backup &amp; Restore</div>
+        <div class="form-row">
+          <div style="background:var(--light-bg); padding:14px; border-radius:var(--radius-sm);">
+            <div style="font-weight:700; margin-bottom:6px;">Export Complete Sales &amp; Inventory</div>
+            <p style="font-size:0.84rem; color:var(--muted-text); margin-bottom:12px;">
+              Download all historical sales, kit inventory, and platform records as Excel or CSV.
+            </p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              <a href="/api/export/all?format=excel" class="btn btn-sm btn-blue">Export All (Excel .xlsx)</a>
+              <a href="/api/export/all?format=csv" class="btn btn-sm btn-outline-blue">Export All (CSV)</a>
+            </div>
+          </div>
+
+          <div style="background:var(--light-bg); padding:14px; border-radius:var(--radius-sm);">
+            <div style="font-weight:700; margin-bottom:6px;">Database Backup &amp; Restore</div>
+            <p style="font-size:0.84rem; color:var(--muted-text); margin-bottom:12px;">
+              Download a full JSON backup file or restore from a previous backup.
+            </p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <a href="/api/backup" class="btn btn-sm btn-blue">Download Backup (.json)</a>
+              <label class="btn btn-sm btn-outline-red" style="cursor:pointer;">
+                Restore Backup
+                <input type="file" id="restoreBackupFileInput" accept=".json" style="display:none;" onchange="handleRestoreBackupFile(event)" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Administrator Password Security -->
+      <div class="card">
+        <div class="card-title">Administrator Security</div>
+        <form onsubmit="changeAdminPassword(event)" class="form-row" style="align-items:end;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="adminCurrentPassword">Current Password (default: admin123)</label>
+            <input type="password" id="adminCurrentPassword" class="form-control" placeholder="Current password" required />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="adminNewPassword">New Password</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input type="password" id="adminNewPassword" class="form-control" style="flex:1; min-width:150px;" placeholder="New password (min 4 chars)" required />
+              <button type="submit" class="btn btn-blue" style="flex-shrink:0;">Update</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Supabase Database Connection Status -->
+      <div class="card">
+        <div class="card-title">
+          <span>Database Connection (Supabase PostgreSQL)</span>
+          <span class="status-pill active" id="dbEngineBadge">Checking...</span>
+        </div>
+        <p style="font-size:0.85rem; color:var(--muted-text); margin-bottom:12px;" id="dbConnectionStatusText">
+          Checking active database layer...
+        </p>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+          <button type="button" class="btn btn-sm btn-outline-blue" onclick="loadDatabaseStatus()">Refresh Status</button>
+          <button type="button" class="btn btn-sm btn-blue" id="btnMigrateLocalToSupabase" style="display:none;" onclick="migrateLocalDataToSupabase()">Migrate Local SQLite Data to Supabase</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Fixed Bottom Navigation Bar -->
+  <nav class="bottom-nav" aria-label="Primary Navigation">
+    <button type="button" class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <rect x="3" y="3" width="7" height="9" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="5" rx="1.5"/>
+        <rect x="14" y="12" width="7" height="9" rx="1.5"/>
+        <rect x="3" y="16" width="7" height="5" rx="1.5"/>
+      </svg>
+      <span>Dashboard</span>
+    </button>
+
+    <button type="button" class="nav-item nav-add-sale" data-view="add-sale" onclick="switchView('add-sale')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 8v8M8 12h8" stroke-linecap="round"/>
+      </svg>
+      <span class="nav-add-pill">Add Sale</span>
+    </button>
+
+    <button type="button" class="nav-item" data-view="kits" onclick="switchView('kits')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+      <span>Kits</span>
+    </button>
+
+    <button type="button" class="nav-item" data-view="reports" onclick="switchView('reports')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+      <span>Reports</span>
+    </button>
+
+    <button type="button" class="nav-item" data-view="settings" onclick="switchView('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- ==========================================
+       MODAL 1: ADD / EDIT KIT MODAL
+       ========================================== -->
+  <div id="kitModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 class="modal-title" id="kitModalTitle">Add New Kit</h2>
+        <button type="button" class="modal-close" onclick="closeModal('kitModal')">×</button>
+      </div>
+      <form id="kitForm" onsubmit="submitKitForm(event)">
+        <div class="modal-body">
+          <input type="hidden" id="kitFormId" />
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="kitFormName">Kit Name <span class="req">*</span></label>
+              <input type="text" id="kitFormName" class="form-control" placeholder="e.g., Robotics Starter Kit" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="kitFormSku">Kit ID / SKU <span class="req">*</span></label>
+              <input type="text" id="kitFormSku" class="form-control" placeholder="e.g., KIT-ROB-01" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="kitFormCategory">Category</label>
+              <input type="text" id="kitFormCategory" class="form-control" placeholder="e.g., Robotics, IoT, Electronics" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="kitFormStatus">Status</label>
+              <select id="kitFormStatus" class="form-control">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="kitFormSellingPrice">Default Selling Price <span class="req">*</span></label>
+              <input type="number" id="kitFormSellingPrice" class="form-control" step="0.01" min="0" placeholder="0.00" required />
+              <div class="form-hint">Past sales keep their original selling price.</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="kitFormCostPrice">Cost Price (Optional)</label>
+              <input type="number" id="kitFormCostPrice" class="form-control" step="0.01" min="0" placeholder="Optional for profit calculation" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="kitFormStock">Available Stock Quantity (Optional)</label>
+              <input type="number" id="kitFormStock" class="form-control" step="1" min="0" placeholder="Leave blank if untracked" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="kitFormImage">Kit Image URL (Optional)</label>
+              <input type="text" id="kitFormImage" class="form-control" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="kitFormDescription">Short Description</label>
+            <textarea id="kitFormDescription" class="form-control" placeholder="Brief notes or kit contents..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-grey" onclick="closeModal('kitModal')">Cancel</button>
+          <button type="submit" class="btn btn-blue">Save Kit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 2: INDIVIDUAL KIT DETAILS & HISTORY
+       ========================================== -->
+  <div id="kitDetailsModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width:680px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="detKitName">Kit Details</h2>
+          <div style="font-size:0.8rem; color:var(--muted-text);" id="detKitSkuCategory"></div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeModal('kitDetailsModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="summary-grid" style="margin-bottom:14px;">
+          <div class="summary-card">
+            <div class="summary-label">Selling Price</div>
+            <div class="summary-value blue" id="detSellingPrice">₹0</div>
+            <div class="summary-subtext" id="detCostPrice">Cost: N/A</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Total Qty Sold</div>
+            <div class="summary-value" id="detTotalSold">0</div>
+            <div class="summary-subtext" id="detTotalOrders">0 orders</div>
+          </div>
+          <div class="summary-card highlight-red">
+            <div class="summary-label">Total Revenue</div>
+            <div class="summary-value red" id="detTotalRevenue">₹0</div>
+            <div class="summary-subtext" id="detTotalProfit"></div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Remaining Stock</div>
+            <div class="summary-value" id="detRemainingStock">N/A</div>
+            <div class="summary-subtext" id="detStatusText">Active</div>
+          </div>
+        </div>
+
+        <div style="background:var(--light-bg); padding:12px; border-radius:var(--radius-sm); margin-bottom:16px;">
+          <form onsubmit="submitQuickPriceUpdate(event)" style="display:flex; flex-wrap:wrap; align-items:end; gap:10px;">
+            <input type="hidden" id="detQuickKitId" />
+            <div style="flex:1; min-width:160px;">
+              <label class="form-label" for="detNewSellingPrice" style="margin-bottom:4px;">Quick Update Default Selling Price</label>
+              <input type="number" id="detNewSellingPrice" class="form-control" step="0.01" min="0" required style="min-height:40px;" />
+            </div>
+            <button type="submit" class="btn btn-sm btn-blue" style="min-height:40px;">Update Price</button>
+            <button type="button" class="btn btn-sm btn-outline-blue" style="min-height:40px;" onclick="editKitFromDetails()">Full Edit</button>
+          </form>
+          <div class="form-hint">Updating this price applies to future sales. Past sales retain their original selling price.</div>
+        </div>
+
+        <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:8px;">Sales History for This Kit</h3>
+        <div id="detSalesHistoryContainer" class="table-responsive"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-grey" onclick="closeModal('kitDetailsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 3: EDIT SALE MODAL
+       ========================================== -->
+  <div id="editSaleModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit Sale Entry</h2>
+        <button type="button" class="modal-close" onclick="closeModal('editSaleModal')">×</button>
+      </div>
+      <form onsubmit="submitEditSaleForm(event)">
+        <div class="modal-body">
+          <input type="hidden" id="editSaleId" />
+          <div class="form-group">
+            <label class="form-label" for="editSaleKit">Kit</label>
+            <select id="editSaleKit" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editSalePlatform">Platform</label>
+            <select id="editSalePlatform" class="form-control" required></select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="editSaleQty">Quantity Sold</label>
+              <input type="number" id="editSaleQty" class="form-control" min="1" step="1" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editSalePrice">Selling Price (Unit)</label>
+              <input type="number" id="editSalePrice" class="form-control" min="0" step="0.01" required />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="editSaleDate">Sale Date &amp; Time</label>
+            <input type="datetime-local" id="editSaleDate" class="form-control" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-grey" onclick="closeModal('editSaleModal')">Cancel</button>
+          <button type="submit" class="btn btn-blue">Update Sale</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 4: EXECUTIVE DAILY REPORT (PDF DOWNLOAD)
+       ========================================== -->
+  <div id="eodReportModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width:600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Executive Daily Sales Report</h2>
+          <div style="font-size:0.8rem; color:var(--muted-text);" id="eodModalSubtitle">Review summary and download PDF report</div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeModal('eodReportModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+          <label class="form-label" for="eodModalDatePicker" style="margin-bottom:0;">Report Date:</label>
+          <input type="date" id="eodModalDatePicker" class="form-control" style="max-width:190px; min-height:38px; padding:6px 10px;" onchange="generateEodReportForDate(this.value)" />
+        </div>
+
+        <pre id="eodReportTextOutput" class="eod-preview-pre">Generating report...</pre>
+
+        <div class="share-actions-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+          <button type="button" class="btn btn-red" onclick="downloadEodPdf()">
+            Download PDF
+          </button>
+          <button type="button" class="btn btn-blue" onclick="downloadEodExcel()">
+            Download Excel
+          </button>
+          <button type="button" class="btn btn-outline-blue" onclick="copyEodReportText()">
+            Copy Summary
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 5: ADMINISTRATOR LOCK SCREEN MODAL
+       ========================================== -->
+  <div id="authLockModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width:400px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Administrator Access</h2>
+      </div>
+      <form onsubmit="submitAdminLogin(event)">
+        <div class="modal-body">
+          <p style="font-size:0.9rem; color:var(--muted-text); margin-bottom:14px;">
+            Enter your administrator password to unlock Crazinos Daily. (Default password: <code>admin123</code>)
+          </p>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="loginPasswordInput">Password</label>
+            <input type="password" id="loginPasswordInput" class="form-control" placeholder="Enter password" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-blue btn-block">Unlock Dashboard</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
