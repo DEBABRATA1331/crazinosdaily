@@ -39,7 +39,8 @@ def _load_dotenv(path):
 
 _load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-DB_PATH = os.environ.get("KIT_SALES_DB_PATH", os.path.join(BASE_DIR, "kit_sales.db"))
+_default_db_dir = "/tmp" if os.environ.get("VERCEL") else BASE_DIR
+DB_PATH = os.environ.get("KIT_SALES_DB_PATH", os.path.join(_default_db_dir, "kit_sales.db"))
 DB_SCHEMA = os.environ.get("DB_SCHEMA", "crazinos")
 
 PREDEFINED_PLATFORMS = [

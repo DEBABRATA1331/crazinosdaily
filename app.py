@@ -31,8 +31,15 @@ from database import (
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "kit-sales-secret-key-2026-pwa")
 
-# Initialize database on startup
-init_db()
+_db_initialized = False
+
+
+@app.before_request
+def _ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized and request.path != "/sw.js" and not request.path.startswith("/static/"):
+        init_db()
+        _db_initialized = True
 
 
 def get_settings_dict(conn=None):
