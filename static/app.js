@@ -189,6 +189,11 @@ async function loadBootstrapData() {
   state.platforms = data.platforms || [];
   state.kits = data.kits || [];
 
+  const banner = document.getElementById('ephemeralDbBanner');
+  if (banner) {
+    banner.style.display = data.db_status && data.db_status.ephemeral ? 'block' : 'none';
+  }
+
   applySettingsToUI();
   populateSaleFormOptions();
   populateReportFilterOptions();
@@ -577,16 +582,27 @@ async function submitAddSale(event) {
       })
     });
 
-    showToast(`Sale saved: ${res.sale.quantity} x ${res.sale.kit_name} (${formatCurrency(res.sale.total_amount)})`);
+    showToast(`Sale saved: ${res.sale.quantity} x ${res.sale.kit_name} (${formatCurrency(res.sale.total_amount)}) — Ready for next kit`);
 
-    // Reset quantity to 1 and refresh time for next quick entry
+    // Reset form for effortless next-kit entry (keep platform selected, clear kit & price, reset qty to 1)
+    document.getElementById('saleKitSelect').value = '';
+    document.getElementById('saleKitSearch').value = '';
+    document.getElementById('salePriceInput').value = '';
+    document.getElementById('selectedKitStockHint').textContent = '';
     document.getElementById('saleQuantityInput').value = '1';
     document.getElementById('saleDateTimeInput').value = getCurrentLocalDateTimeInput();
 
     await loadBootstrapData();
-    onSaleKitSelected();
+    recalcSaleForm();
     await loadRecentSalesList();
     await loadDashboard();
+
+    // Focus search box and open kit list so user can immediately pick the next kit
+    const kitSearchEl = document.getElementById('saleKitSearch');
+    if (kitSearchEl) {
+      kitSearchEl.focus();
+      filterSaleKitOptions();
+    }
   } catch (err) {
     showToast(err.message, true);
   }
