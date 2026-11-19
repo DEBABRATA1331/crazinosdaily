@@ -189,11 +189,6 @@ async function loadBootstrapData() {
   state.platforms = data.platforms || [];
   state.kits = data.kits || [];
 
-  const banner = document.getElementById('ephemeralDbBanner');
-  if (banner) {
-    banner.style.display = data.db_status && data.db_status.ephemeral ? 'block' : 'none';
-  }
-
   applySettingsToUI();
   populateSaleFormOptions();
   populateReportFilterOptions();
