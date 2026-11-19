@@ -90,9 +90,10 @@ def parse_database_url(url_str):
 
 
 def get_pg_config():
-    url = os.environ.get("DATABASE_URL", "").strip()
-    if url.startswith(("postgres://", "postgresql://")):
-        return parse_database_url(url)
+    for var_name in ("DATABASE_URL", "POSTGRES_URL", "POSTGRES_URL_NON_POOLING", "SUPABASE_DB_URL"):
+        url = os.environ.get(var_name, "").strip()
+        if url.startswith(("postgres://", "postgresql://")):
+            return parse_database_url(url)
     return None
 
 
