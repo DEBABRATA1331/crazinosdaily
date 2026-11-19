@@ -41,9 +41,18 @@ _db_initialized = False
 @app.before_request
 def _ensure_db_initialized():
     global _db_initialized
-    if not _db_initialized and request.path != "/sw.js" and not request.path.startswith("/static/"):
+    if (
+        not _db_initialized
+        and request.path not in ("/sw.js", "/api/health")
+        and not request.path.startswith("/static/")
+    ):
         init_db()
         _db_initialized = True
+
+
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    return jsonify(get_active_db_status())
 
 
 @app.after_request
