@@ -587,7 +587,7 @@
         <div class="card-title">Administrator Security</div>
         <form onsubmit="changeAdminPassword(event)" class="form-row" style="align-items:end;">
           <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label" for="adminCurrentPassword">Current Password (default: admin123)</label>
+            <label class="form-label" for="adminCurrentPassword">Current Password</label>
             <input type="password" id="adminCurrentPassword" class="form-control" placeholder="Current password" required />
           </div>
           <div class="form-group" style="margin-bottom:0;">
@@ -885,20 +885,28 @@
   <div id="authLockModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-dialog" style="max-width:400px;">
       <div class="modal-header">
-        <h2 class="modal-title">Administrator Access</h2>
+        <h2 class="modal-title">Crazinos Daily — Sign In</h2>
       </div>
-      <form onsubmit="submitAdminLogin(event)">
+      <form onsubmit="submitAdminLogin(event)" autocomplete="on">
         <div class="modal-body">
           <p style="font-size:0.9rem; color:var(--muted-text); margin-bottom:14px;">
-            Enter your administrator password to unlock Crazinos Daily. (Default password: <code>admin123</code>)
+            Enter your Login ID and Password to access Crazinos Daily.
           </p>
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label" for="loginPasswordInput">Password</label>
-            <input type="password" id="loginPasswordInput" class="form-control" placeholder="Enter password" required />
+          <div class="form-group">
+            <label class="form-label" for="loginUsernameInput">Login ID</label>
+            <input type="text" id="loginUsernameInput" name="username" autocomplete="username" class="form-control" placeholder="Enter Login ID" required />
           </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPasswordInput">Password</label>
+            <input type="password" id="loginPasswordInput" name="password" autocomplete="current-password" class="form-control" placeholder="Enter password" required />
+          </div>
+          <label style="display:flex; align-items:center; gap:10px; font-weight:600; font-size:0.88rem; cursor:pointer;">
+            <input type="checkbox" id="loginRememberMe" checked style="width:18px; height:18px;" />
+            <span>Keep me signed in (30 days)</span>
+          </label>
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-blue btn-block">Unlock Dashboard</button>
+          <button type="submit" class="btn btn-blue btn-block">Sign In</button>
         </div>
       </form>
     </div>

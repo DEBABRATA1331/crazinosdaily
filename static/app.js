@@ -1706,21 +1706,23 @@ async function lockDashboard() {
 
 async function submitAdminLogin(event) {
   event.preventDefault();
+  const username = document.getElementById('loginUsernameInput').value.trim();
   const pw = document.getElementById('loginPasswordInput').value;
+  const remember = Boolean(document.getElementById('loginRememberMe')?.checked);
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw })
+      body: JSON.stringify({ username, password: pw, remember })
     });
     const data = await res.json();
     if (!res.ok) {
-      showToast(data.error || 'Invalid password', true);
+      showToast(data.error || 'Invalid Login ID or Password', true);
       return;
     }
     document.getElementById('loginPasswordInput').value = '';
     closeModal('authLockModal');
-    showToast('Dashboard unlocked');
+    showToast('Signed in to Crazinos Daily');
     await loadBootstrapData();
     await loadDashboard();
   } catch (err) {

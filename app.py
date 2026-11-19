@@ -1,4 +1,5 @@
 import csv
+import hmac
 import io
 import json
 import os
@@ -30,6 +31,9 @@ from database import (
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "kit-sales-secret-key-2026-pwa")
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 _db_initialized = False
 
@@ -161,15 +165,31 @@ def auth_status():
 @app.route("/api/auth/login", methods=["POST"])
 def auth_login():
     data = request.get_json(silent=True) or {}
-    password = str(data.get("password", "")).strip()
+    username = str(data.get("username", "")).strip()
+    password = str(data.get("password", ""))
+    remember = bool(data.get("remember", True))
+
     settings = get_settings_dict()
+    expected_user = os.environ.get("ADMIN_USERNAME") or settings.get(
+        "admin_username", "#$%crazinos0718"
+    )
+    env_password = os.environ.get("ADMIN_PASSWORD")
     pw_hash = settings.get("admin_password_hash", "")
 
-    if check_password_hash(pw_hash, password):
+    user_ok = hmac.compare_digest(username, expected_user)
+    if env_password:
+        pw_ok = hmac.compare_digest(password, env_password) or (
+            bool(pw_hash) and check_password_hash(pw_hash, password)
+        )
+    else:
+        pw_ok = bool(pw_hash) and check_password_hash(pw_hash, password)
+
+    if user_ok and pw_ok:
+        session.permanent = remember
         session["admin_logged_in"] = True
         session["is_locked"] = False
         return jsonify({"success": True, "message": "Logged in successfully"})
-    return jsonify({"error": "Invalid administrator password"}), 401
+    return jsonify({"error": "Invalid Login ID or Password"}), 401
 
 
 @app.route("/api/auth/lock", methods=["POST"])

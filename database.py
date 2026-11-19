@@ -60,9 +60,13 @@ DEFAULT_SETTINGS = {
     "timezone": "Asia/Kolkata",
     "stock_tracking_enabled": "1",
     "profit_calculation_enabled": "1",
-    "admin_username": "admin",
-    "admin_password_hash": generate_password_hash("admin123"),
-    "require_auth": "0",
+    "admin_username": os.environ.get("ADMIN_USERNAME", "#$%crazinos0718"),
+    "admin_password_hash": (
+        generate_password_hash(os.environ["ADMIN_PASSWORD"])
+        if os.environ.get("ADMIN_PASSWORD")
+        else "scrypt:32768:8:1$o8nQHvXFdbaWglVR$f18eeb6ca3902149a2aae7808987be8889eadda4693e58f4b90285cfc29f10fc124dc64aca6aa42a6549aa5ee9903843e479040f300e314c8d12f422e2ea5113"
+    ),
+    "require_auth": "1",
 }
 
 
